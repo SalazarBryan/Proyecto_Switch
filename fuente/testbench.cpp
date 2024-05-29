@@ -2,7 +2,7 @@
 #include <iostream>
 
 void test_layer2_switch() {
-	#pragma HLS STREAM variable=B depth=100 type=fifo
+    #pragma HLS STREAM variable=B depth=100 type=fifo
     hls::stream<ethernet_frame> input_port_streams[MAX_PORTS];
     hls::stream<ethernet_frame> output_port_streams[MAX_PORTS];
 
@@ -22,8 +22,8 @@ void test_layer2_switch() {
     //2 hilos --- 1 donde correr layer2_switch y el otro donde corre el test
 
     for (int i = 0; i < MAX_PORTS; i++) {
-    	if (i != 0 && !output_port_streams[i].empty()) {
-    		ethernet_frame output_frame = output_port_streams[i].read();
+        if (i != 0 && !output_port_streams[i].empty()) {
+            ethernet_frame output_frame = output_port_streams[i].read();
             std::cout << "Trama recibida en el puerto " << i << std::endl;
             std::cout << "Dest MAC: " << std::hex << output_frame.dest_mac.to_uint64() << std::endl;
             std::cout << "Src MAC: " << std::hex << output_frame.src_mac.to_uint64() << std::endl;
@@ -33,7 +33,7 @@ void test_layer2_switch() {
             for (int j = 0; j < MIN_FRAME_SIZE; j++) {
                 std::cout << std::hex << (int)output_frame.data[j] << " ";
             }
-            	std::cout << std::endl;
+                std::cout << std::endl;
         }
     }
 }

@@ -96,21 +96,28 @@ void process_frame(ethernet_frame& frame, hls::stream<ethernet_frame> output_por
 
     bool is_broadcast = (frame.dest_mac == 0xFFFFFFFFFFFF);
     if (is_broadcast) {
+        // Es un broadcast, enviar a todos los puertos excepto al de entrada
         for (int i = 0; i < MAX_PORTS; i++) {
             if (i != input_port) {
                 output_port_streams[i].write(frame);
             }
         }
     } else {
+        // Buscar el puerto de salida en la tabla MAC
         int output_port = -1;
         int index = findMacEntry(frame.dest_mac);
         if (index != -1) {
             output_port = macTable[index].port;
         }
 
-        if (output_port != -1 && output_port != input_port) {
+        // Si se encuentra un puerto válido y no es el de entrada, enviar allí la trama
+        if (output_port != -1 && output_port < MAX_PORTS && output_port != input_port) {
             output_port_streams[output_port].write(frame);
+        } else if (output_port != -1 && output_port >= MAX_PORTS) {
+            // Si se encuentra un puerto pero no es válido, mostrar un mensaje de error
+            printf("Error: Output port %d is out of valid range (0 to %d). Frame discarded.\n", output_port, MAX_PORTS - 1);
         } else {
+            // Si no se encuentra en la tabla MAC, enviar a todos los puertos excepto al de entrada
             for (int i = 0; i < MAX_PORTS; i++) {
                 if (i != input_port) {
                     output_port_streams[i].write(frame);
@@ -120,6 +127,7 @@ void process_frame(ethernet_frame& frame, hls::stream<ethernet_frame> output_por
     }
 }
 
+
 void layer2_switch(hls::stream<ethernet_frame> input_port_streams[MAX_PORTS], hls::stream<ethernet_frame> output_port_streams[MAX_PORTS]) {
     #pragma HLS INTERFACE axis port=input_port_streams
     #pragma HLS INTERFACE axis port=output_port_streams
@@ -127,8 +135,11 @@ void layer2_switch(hls::stream<ethernet_frame> input_port_streams[MAX_PORTS], hl
 
     static ap_uint<4> current_port = 0;
 
-    //while (true) {
+    bool all_ports_empty = false;
+
+    while (!all_ports_empty) {
         bool frame_processed = false;
+        all_ports_empty = true;
 
         for (int i = 0; i < MAX_PORTS; i++) {
             #pragma HLS UNROLL
@@ -140,6 +151,7 @@ void layer2_switch(hls::stream<ethernet_frame> input_port_streams[MAX_PORTS], hl
                 process_frame(frame, output_port_streams, port);
                 frame_processed = true;
                 current_port = port + 1;
+                all_ports_empty = false;
                 break;
             }
         }
@@ -147,5 +159,6 @@ void layer2_switch(hls::stream<ethernet_frame> input_port_streams[MAX_PORTS], hl
         if (!frame_processed) {
             current_port = (current_port + 1) % MAX_PORTS;
         }
-    //}
+    }
 }
+
